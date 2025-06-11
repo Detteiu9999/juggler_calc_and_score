@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../models/practice_record.dart';
 import '../services/record_service.dart';
+import '../services/slot_calculator.dart'; // SlotMachine enum を使用するためにインポート
 
 class MonthlySummariesTab extends StatelessWidget {
   final List<PracticeRecord> records;
@@ -14,7 +15,6 @@ class MonthlySummariesTab extends StatelessWidget {
 
     for (var record in records) {
       String monthKey = '${record.date.year}/${record.date.month.toString().padLeft(2, '0')}';
-
       if (!summaries.containsKey(monthKey)) {
         summaries[monthKey] = {
           'totalGames': 0,
@@ -28,15 +28,18 @@ class MonthlySummariesTab extends StatelessWidget {
       var summary = summaries[monthKey]!;
       summary['totalGames'] += record.gameCount;
 
-      if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
-        summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
-      }
+      // ニューパルサーBT以外の場合のみ、BIG/REG/ぶどうの回数を集計する
+      if (record.machine != SlotMachine.newPulserBT) {
+        if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
+          summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
+        }
 
-      if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
-        summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
-      }
+        if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
+          summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
+        }
 
-      summary['totalBudouCount'] += record.budouCount;
+        summary['totalBudouCount'] += record.budouCount;
+      }
 
       if (record.coinDifference != null) {
         summary['totalCoinDifference'] += record.coinDifference!;
@@ -85,7 +88,6 @@ class MonthlySummariesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final monthlySummaries = _calculateMonthlySummaries();
-
     if (monthlySummaries.isEmpty) {
       return Center(
         child: Text('記録がありません'),
