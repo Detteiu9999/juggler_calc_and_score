@@ -9,7 +9,6 @@ class MonthlySummariesTab extends StatelessWidget {
   final List<PracticeRecord> records;
 
   const MonthlySummariesTab({Key? key, required this.records}) : super(key: key);
-
   Map<String, Map<String, dynamic>> _calculateMonthlySummaries() {
     Map<String, Map<String, dynamic>> summaries = {};
 
@@ -26,10 +25,11 @@ class MonthlySummariesTab extends StatelessWidget {
       }
 
       var summary = summaries[monthKey]!;
-      summary['totalGames'] += record.gameCount;
 
       // ニューパルサーBT以外の場合のみ、BIG/REG/ぶどうの回数を集計する
       if (record.machine != SlotMachine.newPulserBT) {
+        summary['totalGames'] += record.gameCount;
+
         if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
           summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
         }
@@ -39,11 +39,13 @@ class MonthlySummariesTab extends StatelessWidget {
         }
 
         summary['totalBudouCount'] += record.budouCount;
+
+        if (record.coinDifference != null) {
+          summary['totalCoinDifference'] += record.coinDifference!;
+        }
       }
 
-      if (record.coinDifference != null) {
-        summary['totalCoinDifference'] += record.coinDifference!;
-      }
+
     }
 
     // 確率と機械割の計算
