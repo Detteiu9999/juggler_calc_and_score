@@ -169,7 +169,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text('実践記録'),
@@ -214,6 +214,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
               Tab(text: '記録一覧'),
               Tab(text: '機種別集計'),
               Tab(text: '月別集計'),
+              Tab(text: '通算/年別集計'),
             ],
           ),
         ),
@@ -222,6 +223,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             _buildRecordsList(),
             _buildMachineSummaries(),
             MonthlySummariesTab(records: _records),
+            _buildYearlyAndAllTimeSummaries(),
           ],
         ),
       ),
@@ -426,5 +428,187 @@ class _RecordsScreenState extends State<RecordsScreen> {
         );
       },
     );
+  }
+
+  Widget _buildYearlyAndAllTimeSummaries() {
+    final summaries = _calculateYearlyAndAllTimeSummaries();
+    if (summaries.isEmpty || (summaries.containsKey('通算') && summaries['通算']!['totalGames'] == 0)) {
+      return Center(
+        child: Text('記録がありません'),
+      );
+    }
+
+    final sortedKeys = summaries.keys.toList()
+      ..sort((a, b) {
+        if (a == '通算') return -1;
+        if (b == '通算') return 1;
+        return b.compareTo(a);
+      });
+
+    return ListView.builder(
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final key = sortedKeys[index];
+        final summary = summaries[key]!;
+        final title = key == '通算' ? '通算記録' : '$key年';
+
+        if (summary['totalGames'] == 0) {
+          return SizedBox.shrink();
+        }
+
+        return Card(
+          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text('総実践G数: ${summary['totalGames']}G'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('総BIG回数: ${summary['totalBigCount']}回'),
+                          Text(
+                            'BIG確率: ${RecordService.getProbabilityFraction(summary['avgBigProbability'] ?? double.infinity)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('総REG回数: ${summary['totalRegCount']}回'),
+                          Text(
+                            'REG確率: ${RecordService.getProbabilityFraction(summary['avgRegProbability'] ?? double.infinity)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Divider(),
+                Text('ぶどう'),
+                Text(
+                  '総回数: ${summary['totalBudouCount']}回\n'
+                      '確率: ${RecordService.getProbabilityFraction(summary['avgBudouProbability'] ?? double.infinity)}',
+                ),
+                if (summary['totalCoinDifference'] != 0) ...[
+                  Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '総差枚数: ${summary['totalCoinDifference']}枚',
+                        style: TextStyle(
+                          color: summary['totalCoinDifference'] >= 0 ? Colors.blue : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '機械割: ${summary['machineEfficiency'].toStringAsFixed(2)}%',
+                        style: TextStyle(
+                          color: summary['machineEfficiency'] >= 100 ? Colors.blue : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Map<String, Map<String, dynamic>> _calculateYearlyAndAllTimeSummaries() {
+    Map<String, Map<String, dynamic>> summaries = {};
+
+    Map<String, dynamic> createEmptySummary() {
+      return {
+        'totalGames': 0,
+        'totalBigCount': 0,
+        'totalRegCount': 0,
+        'totalBudouCount': 0,
+        'totalCoinDifference': 0,
+      };
+    }
+
+    void updateSummaryData(Map<String, dynamic> summary, PracticeRecord record) {
+      summary['totalGames'] += record.gameCount;
+
+      if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
+        summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
+      }
+
+      if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
+        summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
+      }
+
+      summary['totalBudouCount'] += record.budouCount;
+
+      if (record.coinDifference != null) {
+        summary['totalCoinDifference'] += record.coinDifference!;
+      }
+    }
+
+    if (_records.isNotEmpty) {
+      summaries['通算'] = createEmptySummary();
+    }
+
+    for (var record in _records) {
+      if (record.machine == SlotMachine.newPulserBT) continue;
+
+      String yearKey = record.date.year.toString();
+      if (!summaries.containsKey(yearKey)) {
+        summaries[yearKey] = createEmptySummary();
+      }
+
+      updateSummaryData(summaries[yearKey]!, record);
+      updateSummaryData(summaries['通算']!, record);
+    }
+
+    summaries.forEach((key, data) {
+      if (data['totalGames'] > 0) {
+        if (data['totalBigCount'] > 0) {
+          data['avgBigProbability'] = data['totalGames'] / data['totalBigCount'];
+        } else {
+          data['avgBigProbability'] = double.infinity;
+        }
+
+        if (data['totalRegCount'] > 0) {
+          data['avgRegProbability'] = data['totalGames'] / data['totalRegCount'];
+        } else {
+          data['avgRegProbability'] = double.infinity;
+        }
+
+        if (data['totalBudouCount'] > 0) {
+          data['avgBudouProbability'] = data['totalGames'] / data['totalBudouCount'];
+        } else {
+          data['avgBudouProbability'] = double.infinity;
+        }
+
+        double machineEfficiency = 100.0;
+        if (data['totalGames'] > 0) {
+          machineEfficiency = ((data['totalGames'] * 3 + data['totalCoinDifference']) / (data['totalGames'] * 3)) * 100;
+        }
+        data['machineEfficiency'] = machineEfficiency;
+      }
+    });
+
+    return summaries;
   }
 }
