@@ -501,8 +501,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
                             if (newValue == SlotMachine.gogoJuggler ||
                                 newValue == SlotMachine.jugglerGirls ||
                                 newValue == SlotMachine.misterJuggler ||
-                                newValue == SlotMachine.ultramiracleJuggler ||
-                                newValue == SlotMachine.newPulserBT
+                                newValue == SlotMachine.ultramiracleJuggler
                             ) {
                               countCController.clear();
                               countDController.clear();
@@ -542,10 +541,6 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
                           DropdownMenuItem(
                             value: SlotMachine.ultramiracleJuggler,
                             child: Text('ウルトラミラクルジャグラー（実践ボーナス数は全て単独欄に入力）'),
-                          ),
-                          DropdownMenuItem(
-                            value: SlotMachine.newPulserBT,
-                            child: Text('ニューパルサーBT（実践ボーナス数は全て単独欄に入力）'),
                           ),
                         ],
                       ),

@@ -13,25 +13,40 @@ class RecordService {
     final prefs = await SharedPreferences.getInstance();
     List<String> records = prefs.getStringList(_recordsKey) ?? [];
 
+    // 現在有効な機種名をSetとして取得
+    final validMachineNames = SlotMachine.values.map((m) => m.toString()).toSet();
     bool needsMigration = false;
     List<String> migratedRecords = [];
 
-    for (var record in records) {
+    for (var recordString in records) {
       try {
-        final data = jsonDecode(record);
-        if (!data.containsKey('budouCount')) {
+        final data = jsonDecode(recordString);
+        bool isRecordValid = true;
+
+        // 1. 機種が現在も有効かチェック
+        if (!validMachineNames.contains(data['machine'])) {
           needsMigration = true;
-          // 古いデータに新しいフィールドを追加
+          isRecordValid = false; // 無効なレコードとしてマーク
+        }
+
+        // 2. 'budouCount'の既存のマイグレーション
+        if (isRecordValid && !data.containsKey('budouCount')) {
+          needsMigration = true;
           data['budouCount'] = 0;
           data['budouProbability'] = 'Infinity';
         }
-        migratedRecords.add(jsonEncode(data));
+
+        if (isRecordValid) {
+          migratedRecords.add(jsonEncode(data));
+        }
       } catch (e) {
-        print('Error migrating record: $e');
+        // JSONのパースエラーなどもここでキャッチし、そのレコードは無視する
+        print('Error migrating record, it will be removed: $e');
         needsMigration = true;
       }
     }
 
+    // 変更があった場合のみ、SharedPreferencesに書き込む
     if (needsMigration) {
       await prefs.setStringList(_recordsKey, migratedRecords);
     }
