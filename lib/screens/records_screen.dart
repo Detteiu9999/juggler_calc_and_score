@@ -120,8 +120,6 @@ class _RecordsScreenState extends State<RecordsScreen> {
         return 'ミスタージャグラー';
       case SlotMachine.ultramiracleJuggler:
         return 'ウルトラミラクルジャグラー';
-      case SlotMachine.newPulserBT:
-        return 'ニューパルサーBT';
       default:
         return machine.toString();
     }
@@ -570,7 +568,6 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
 
     for (var record in _records) {
-      if (record.machine == SlotMachine.newPulserBT) continue;
 
       String yearKey = record.date.year.toString();
       if (!summaries.containsKey(yearKey)) {

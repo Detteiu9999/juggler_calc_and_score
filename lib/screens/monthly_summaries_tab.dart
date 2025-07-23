@@ -26,23 +26,20 @@ class MonthlySummariesTab extends StatelessWidget {
 
       var summary = summaries[monthKey]!;
 
-      // ニューパルサーBT以外の場合のみ、BIG/REG/ぶどうの回数を集計する
-      if (record.machine != SlotMachine.newPulserBT) {
-        summary['totalGames'] += record.gameCount;
+      summary['totalGames'] += record.gameCount;
 
-        if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
-          summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
-        }
+      if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
+        summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
+      }
 
-        if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
-          summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
-        }
+      if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
+        summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
+      }
 
-        summary['totalBudouCount'] += record.budouCount;
+      summary['totalBudouCount'] += record.budouCount;
 
-        if (record.coinDifference != null) {
-          summary['totalCoinDifference'] += record.coinDifference!;
-        }
+      if (record.coinDifference != null) {
+        summary['totalCoinDifference'] += record.coinDifference!;
       }
 
 

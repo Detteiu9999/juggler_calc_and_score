@@ -14,8 +14,7 @@ enum SlotMachine {
   happyJuggler,
   jugglerGirls,
   misterJuggler,
-  ultramiracleJuggler,
-  newPulserBT
+  ultramiracleJuggler
 }
 
 class SlotCalculator {
@@ -107,17 +106,6 @@ class SlotCalculator {
       'single_cherry': [35.54, 35.54, 34.86, 34.79, 34.13, 33.44],
       'big_sum': [267.5, 261.1, 260.06, 242.7, 233.2, 216.3],
       'reg_sum': [425.6, 402.1, 350.5, 322.8, 297.9, 277.7],
-    },
-    SlotMachine.newPulserBT: {
-      'payout': [100, 101.5, 101.5, 101.5, 104.5, 108.3],
-      'single_big': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'single_reg': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'cherry_big': [999,999,999,999,999,999],
-      'cherry_reg': [999,999,999,999,999,999],
-      'budou': [999,999,999,999,999,999],
-      'single_cherry': [999,999,999,999,999,999],
-      'big_sum': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'reg_sum': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
     },
   };
 

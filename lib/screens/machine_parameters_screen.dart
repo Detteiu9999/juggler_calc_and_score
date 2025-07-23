@@ -255,8 +255,6 @@ class MachineParametersScreen extends StatelessWidget {
         return 'ミスタージャグラー';
       case SlotMachine.ultramiracleJuggler:
         return 'ウルトラミラクルジャグラー';
-      case SlotMachine.newPulserBT:
-        return 'ニューパルサーBT';
       default:
         return machine.toString();
     }
