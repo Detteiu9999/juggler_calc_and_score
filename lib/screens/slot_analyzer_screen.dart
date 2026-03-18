@@ -279,6 +279,9 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.number,
+        onChanged: (value) {
+          setState(() {});
+        },
         validator: (value) {
           if (value == null || value.isEmpty) {
             return null;
@@ -291,7 +294,6 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
       ),
     );
   }
-
   // 分数を計算して文字列で返す関数
   String _calculateFraction(String count, String total) {
     if (count.isEmpty || total.isEmpty) return '';
@@ -376,7 +378,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
         bool enabled = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children:[
         TextFormField(
           controller: controller,
           enabled: enabled,
@@ -386,6 +388,9 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
             border: OutlineInputBorder(),
           ),
           keyboardType: TextInputType.number,
+          onChanged: (value) {
+            setState(() {});
+          },
           validator: (value) {
             if (value == null || value.isEmpty) return null;
             if (int.tryParse(value) == null) return '数値を入力してください';
