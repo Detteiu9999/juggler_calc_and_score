@@ -483,7 +483,8 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
     return FocusScope(
       node: _focusScopeNode,
       child: Scaffold(
-        body: Column(
+        body: SafeArea( // ← ここに SafeArea を追加します
+        child: Column(
           children: [
             // 機種選択カード - 固定表示部分
             Card(
@@ -907,6 +908,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
               ),
             ),
           ],
+        ),
         ),
       ),
     );
