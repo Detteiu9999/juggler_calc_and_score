@@ -124,15 +124,15 @@ class SlotCalculator {
     required SlotMachine machine,
   }) {
     // 入力値の変換とバリデーション
-    int countAValue = int.tryParse(countA) ?? 0;
-    int countBValue = int.tryParse(countB) ?? 0;
-    int countCValue = int.tryParse(countC) ?? 0;
-    int countDValue = int.tryParse(countD) ?? 0;
-    int countEValue = int.tryParse(countE) ?? 0;
-    int total2Value = int.tryParse(total2) ?? 0;
-    int countFValue = int.tryParse(countF) ?? 0;
-    int countGValue = int.tryParse(countG) ?? 0;
-    int countHValue = int.tryParse(countH) ?? 0;
+    int countAValue = countA.isEmpty ? -1 : (int.tryParse(countA) ?? -1);
+    int countBValue = countB.isEmpty ? -1 : (int.tryParse(countB) ?? -1);
+    int countCValue = countC.isEmpty ? -1 : (int.tryParse(countC) ?? -1);
+    int countDValue = countD.isEmpty ? -1 : (int.tryParse(countD) ?? -1);
+    int countEValue = countE.isEmpty ? -1 : (int.tryParse(countE) ?? -1);
+    int total2Value = total2.isEmpty ? 0 : (int.tryParse(total2) ?? 0); // データカウンターG数は空なら0
+    int countFValue = countF.isEmpty ? -1 : (int.tryParse(countF) ?? -1);
+    int countGValue = countG.isEmpty ? -1 : (int.tryParse(countG) ?? -1);
+    int countHValue = countH.isEmpty ? -1 : (int.tryParse(countH) ?? -1);
 
     int total1Value = (int.tryParse(total1) ?? 0) - total2Value;
 

@@ -136,9 +136,13 @@ if __name__ == '__main__':
 // lib/main.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'screens/slot_analyzer_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  //SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(SlotAnalyzerApp());
 }
 
@@ -150,6 +154,7 @@ class SlotAnalyzerApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        textTheme: GoogleFonts.notoSansJpTextTheme(),
       ),
       home: SlotAnalyzerScreen(),
     );
@@ -693,8 +698,6 @@ class MachineParametersScreen extends StatelessWidget {
         return 'ミスタージャグラー';
       case SlotMachine.ultramiracleJuggler:
         return 'ウルトラミラクルジャグラー';
-      case SlotMachine.newPulserBT:
-        return 'ニューパルサーBT';
       default:
         return machine.toString();
     }
@@ -710,18 +713,17 @@ class MachineParametersScreen extends StatelessWidget {
 import 'package:flutter/material.dart';
 import '../models/practice_record.dart';
 import '../services/record_service.dart';
+import '../services/slot_calculator.dart'; // SlotMachine enum を使用するためにインポート
 
 class MonthlySummariesTab extends StatelessWidget {
   final List<PracticeRecord> records;
 
   const MonthlySummariesTab({Key? key, required this.records}) : super(key: key);
-
   Map<String, Map<String, dynamic>> _calculateMonthlySummaries() {
     Map<String, Map<String, dynamic>> summaries = {};
 
     for (var record in records) {
       String monthKey = '${record.date.year}/${record.date.month.toString().padLeft(2, '0')}';
-
       if (!summaries.containsKey(monthKey)) {
         summaries[monthKey] = {
           'totalGames': 0,
@@ -733,6 +735,7 @@ class MonthlySummariesTab extends StatelessWidget {
       }
 
       var summary = summaries[monthKey]!;
+
       summary['totalGames'] += record.gameCount;
 
       if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
@@ -792,7 +795,6 @@ class MonthlySummariesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final monthlySummaries = _calculateMonthlySummaries();
-
     if (monthlySummaries.isEmpty) {
       return Center(
         child: Text('記録がありません'),
@@ -937,58 +939,109 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Future<void> _showCoinDifferenceDialog(PracticeRecord record) async {
-    final controller = TextEditingController(
-      text: record.coinDifference?.toString() ?? '',
-    );
+    final inController = TextEditingController();
+    final outController = TextEditingController();
 
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('差枚数の入力'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${_formatDate(record.date)}\n'
-                  '${_getMachineName(record.machine)}\n'
-                  '実践G数: ${record.gameCount}G',
-              style: TextStyle(fontSize: 14),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.numberWithOptions(signed: true),
-              decoration: InputDecoration(
-                labelText: '差枚数',
-                suffix: Text('枚'),
-                border: OutlineInputBorder(),
+      builder: (context) {
+        // StatefulBuilderを使用してダイアログ内の状態をリアルタイムに更新
+        return StatefulBuilder(
+          builder: (context, setState) {
+            int? inValue = int.tryParse(inController.text);
+            int? outValue = int.tryParse(outController.text);
+            int? diff;
+
+            // スロットにおける差枚数は一般的に「回収(OUT) - 投資(IN)」で計算します
+            if (inValue != null && outValue != null) {
+              diff = outValue - inValue;
+            }
+
+            return AlertDialog(
+              title: Text('差枚数の入力'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_formatDate(record.date)}\n'
+                        '${_getMachineName(record.machine)}\n'
+                        '実践G数: ${record.gameCount}G',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // すでに差枚数が記録されている場合は現在の値を表示
+                  if (record.coinDifference != null) ...[
+                    Text(
+                      '現在の記録: ${record.coinDifference}枚',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                  ],
+
+                  TextField(
+                    controller: inController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'IN (投資/投入)',
+                      suffix: Text('枚'),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => setState(() {}),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: outController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'OUT (回収/払出)',
+                      suffix: Text('枚'),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => setState(() {}),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '差枚数 (OUT - IN): ${diff != null ? '$diff' : '---'} 枚',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: diff != null
+                          ? (diff >= 0 ? Colors.blue : Colors.red)
+                          : null,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final value = int.tryParse(controller.text);
-              if (value != null) {
-                await RecordService.updateCoinDifference(
-                  record.date,
-                  record.machine,
-                  value,
-                );
-                Navigator.pop(context);
-                _loadData();  // データを再読み込み
-              }
-            },
-            child: Text('保存'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('キャンセル'),
+                ),
+                TextButton(
+                  // INとOUT両方が入力されていないと保存できないようにする
+                  onPressed: diff != null
+                      ? () async {
+                          await RecordService.updateCoinDifference(
+                            record.date,
+                            record.machine,
+                            diff!,
+                          );
+                          Navigator.pop(context);
+                          _loadData(); // データを再読み込み
+                        }
+                      : null,
+                  child: Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1010,8 +1063,6 @@ class _RecordsScreenState extends State<RecordsScreen> {
         return 'ミスタージャグラー';
       case SlotMachine.ultramiracleJuggler:
         return 'ウルトラミラクルジャグラー';
-      case SlotMachine.newPulserBT:
-        return 'ニューパルサーBT';
       default:
         return machine.toString();
     }
@@ -1059,7 +1110,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text('実践記録'),
@@ -1104,6 +1155,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
               Tab(text: '記録一覧'),
               Tab(text: '機種別集計'),
               Tab(text: '月別集計'),
+              Tab(text: '通算/年別集計'),
             ],
           ),
         ),
@@ -1112,6 +1164,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             _buildRecordsList(),
             _buildMachineSummaries(),
             MonthlySummariesTab(records: _records),
+            _buildYearlyAndAllTimeSummaries(),
           ],
         ),
       ),
@@ -1316,6 +1369,186 @@ class _RecordsScreenState extends State<RecordsScreen> {
         );
       },
     );
+  }
+
+  Widget _buildYearlyAndAllTimeSummaries() {
+    final summaries = _calculateYearlyAndAllTimeSummaries();
+    if (summaries.isEmpty || (summaries.containsKey('通算') && summaries['通算']!['totalGames'] == 0)) {
+      return Center(
+        child: Text('記録がありません'),
+      );
+    }
+
+    final sortedKeys = summaries.keys.toList()
+      ..sort((a, b) {
+        if (a == '通算') return -1;
+        if (b == '通算') return 1;
+        return b.compareTo(a);
+      });
+
+    return ListView.builder(
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final key = sortedKeys[index];
+        final summary = summaries[key]!;
+        final title = key == '通算' ? '通算記録' : '$key年';
+
+        if (summary['totalGames'] == 0) {
+          return SizedBox.shrink();
+        }
+
+        return Card(
+          margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text('総実践G数: ${summary['totalGames']}G'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('総BIG回数: ${summary['totalBigCount']}回'),
+                          Text(
+                            'BIG確率: ${RecordService.getProbabilityFraction(summary['avgBigProbability'] ?? double.infinity)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('総REG回数: ${summary['totalRegCount']}回'),
+                          Text(
+                            'REG確率: ${RecordService.getProbabilityFraction(summary['avgRegProbability'] ?? double.infinity)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Divider(),
+                Text('ぶどう'),
+                Text(
+                  '総回数: ${summary['totalBudouCount']}回\n'
+                      '確率: ${RecordService.getProbabilityFraction(summary['avgBudouProbability'] ?? double.infinity)}',
+                ),
+                if (summary['totalCoinDifference'] != 0) ...[
+                  Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '総差枚数: ${summary['totalCoinDifference']}枚',
+                        style: TextStyle(
+                          color: summary['totalCoinDifference'] >= 0 ? Colors.blue : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '機械割: ${summary['machineEfficiency'].toStringAsFixed(2)}%',
+                        style: TextStyle(
+                          color: summary['machineEfficiency'] >= 100 ? Colors.blue : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Map<String, Map<String, dynamic>> _calculateYearlyAndAllTimeSummaries() {
+    Map<String, Map<String, dynamic>> summaries = {};
+
+    Map<String, dynamic> createEmptySummary() {
+      return {
+        'totalGames': 0,
+        'totalBigCount': 0,
+        'totalRegCount': 0,
+        'totalBudouCount': 0,
+        'totalCoinDifference': 0,
+      };
+    }
+
+    void updateSummaryData(Map<String, dynamic> summary, PracticeRecord record) {
+      summary['totalGames'] += record.gameCount;
+
+      if (!record.bigProbability.isInfinite && !record.bigProbability.isNaN) {
+        summary['totalBigCount'] += (record.gameCount / record.bigProbability).round();
+      }
+
+      if (!record.regProbability.isInfinite && !record.regProbability.isNaN) {
+        summary['totalRegCount'] += (record.gameCount / record.regProbability).round();
+      }
+
+      summary['totalBudouCount'] += record.budouCount;
+
+      if (record.coinDifference != null) {
+        summary['totalCoinDifference'] += record.coinDifference!;
+      }
+    }
+
+    if (_records.isNotEmpty) {
+      summaries['通算'] = createEmptySummary();
+    }
+
+    for (var record in _records) {
+      String yearKey = record.date.year.toString();
+      if (!summaries.containsKey(yearKey)) {
+        summaries[yearKey] = createEmptySummary();
+      }
+
+      updateSummaryData(summaries[yearKey]!, record);
+      updateSummaryData(summaries['通算']!, record);
+    }
+
+    summaries.forEach((key, data) {
+      if (data['totalGames'] > 0) {
+        if (data['totalBigCount'] > 0) {
+          data['avgBigProbability'] = data['totalGames'] / data['totalBigCount'];
+        } else {
+          data['avgBigProbability'] = double.infinity;
+        }
+
+        if (data['totalRegCount'] > 0) {
+          data['avgRegProbability'] = data['totalGames'] / data['totalRegCount'];
+        } else {
+          data['avgRegProbability'] = double.infinity;
+        }
+
+        if (data['totalBudouCount'] > 0) {
+          data['avgBudouProbability'] = data['totalGames'] / data['totalBudouCount'];
+        } else {
+          data['avgBudouProbability'] = double.infinity;
+        }
+
+        double machineEfficiency = 100.0;
+        if (data['totalGames'] > 0) {
+          machineEfficiency = ((data['totalGames'] * 3 + data['totalCoinDifference']) / (data['totalGames'] * 3)) * 100;
+        }
+        data['machineEfficiency'] = machineEfficiency;
+      }
+    });
+
+    return summaries;
   }
 }
 ```
@@ -1604,6 +1837,9 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.number,
+        onChanged: (value) {
+          setState(() {});
+        },
         validator: (value) {
           if (value == null || value.isEmpty) {
             return null;
@@ -1616,7 +1852,6 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
       ),
     );
   }
-
   // 分数を計算して文字列で返す関数
   String _calculateFraction(String count, String total) {
     if (count.isEmpty || total.isEmpty) return '';
@@ -1701,7 +1936,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
         bool enabled = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children:[
         TextFormField(
           controller: controller,
           enabled: enabled,
@@ -1711,6 +1946,9 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
             border: OutlineInputBorder(),
           ),
           keyboardType: TextInputType.number,
+          onChanged: (value) {
+            setState(() {});
+          },
           validator: (value) {
             if (value == null || value.isEmpty) return null;
             if (int.tryParse(value) == null) return '数値を入力してください';
@@ -1808,7 +2046,8 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
     return FocusScope(
       node: _focusScopeNode,
       child: Scaffold(
-        body: Column(
+        body: SafeArea( // ← ここに SafeArea を追加します
+        child: Column(
           children: [
             // 機種選択カード - 固定表示部分
             Card(
@@ -1826,8 +2065,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
                             if (newValue == SlotMachine.gogoJuggler ||
                                 newValue == SlotMachine.jugglerGirls ||
                                 newValue == SlotMachine.misterJuggler ||
-                                newValue == SlotMachine.ultramiracleJuggler ||
-                                newValue == SlotMachine.newPulserBT
+                                newValue == SlotMachine.ultramiracleJuggler
                             ) {
                               countCController.clear();
                               countDController.clear();
@@ -1867,10 +2105,6 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
                           DropdownMenuItem(
                             value: SlotMachine.ultramiracleJuggler,
                             child: Text('ウルトラミラクルジャグラー（実践ボーナス数は全て単独欄に入力）'),
-                          ),
-                          DropdownMenuItem(
-                            value: SlotMachine.newPulserBT,
-                            child: Text('ニューパルサーBT（実践ボーナス数は全て単独欄に入力）'),
                           ),
                         ],
                       ),
@@ -2238,6 +2472,7 @@ class _SlotAnalyzerScreenState extends State<SlotAnalyzerScreen>  with WidgetsBi
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -2262,25 +2497,40 @@ class RecordService {
     final prefs = await SharedPreferences.getInstance();
     List<String> records = prefs.getStringList(_recordsKey) ?? [];
 
+    // 現在有効な機種名をSetとして取得
+    final validMachineNames = SlotMachine.values.map((m) => m.toString()).toSet();
     bool needsMigration = false;
     List<String> migratedRecords = [];
 
-    for (var record in records) {
+    for (var recordString in records) {
       try {
-        final data = jsonDecode(record);
-        if (!data.containsKey('budouCount')) {
+        final data = jsonDecode(recordString);
+        bool isRecordValid = true;
+
+        // 1. 機種が現在も有効かチェック
+        if (!validMachineNames.contains(data['machine'])) {
           needsMigration = true;
-          // 古いデータに新しいフィールドを追加
+          isRecordValid = false; // 無効なレコードとしてマーク
+        }
+
+        // 2. 'budouCount'の既存のマイグレーション
+        if (isRecordValid && !data.containsKey('budouCount')) {
+          needsMigration = true;
           data['budouCount'] = 0;
           data['budouProbability'] = 'Infinity';
         }
-        migratedRecords.add(jsonEncode(data));
+
+        if (isRecordValid) {
+          migratedRecords.add(jsonEncode(data));
+        }
       } catch (e) {
-        print('Error migrating record: $e');
+        // JSONのパースエラーなどもここでキャッチし、そのレコードは無視する
+        print('Error migrating record, it will be removed: $e');
         needsMigration = true;
       }
     }
 
+    // 変更があった場合のみ、SharedPreferencesに書き込む
     if (needsMigration) {
       await prefs.setStringList(_recordsKey, migratedRecords);
     }
@@ -2442,7 +2692,6 @@ enum SlotMachine {
   jugglerGirls,
   misterJuggler,
   ultramiracleJuggler,
-  newPulserBT
 }
 
 class SlotCalculator {
@@ -2534,17 +2783,6 @@ class SlotCalculator {
       'single_cherry': [35.54, 35.54, 34.86, 34.79, 34.13, 33.44],
       'big_sum': [267.5, 261.1, 260.06, 242.7, 233.2, 216.3],
       'reg_sum': [425.6, 402.1, 350.5, 322.8, 297.9, 277.7],
-    },
-    SlotMachine.newPulserBT: {
-      'payout': [100, 101.5, 101.5, 101.5, 104.5, 108.3],
-      'single_big': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'single_reg': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'cherry_big': [999,999,999,999,999,999],
-      'cherry_reg': [999,999,999,999,999,999],
-      'budou': [999,999,999,999,999,999],
-      'single_cherry': [999,999,999,999,999,999],
-      'big_sum': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
-      'reg_sum': [366.1, 346.8, 346.8, 346.8, 332.7, 312.1],
     },
   };
 
